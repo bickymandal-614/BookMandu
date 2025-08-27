@@ -1,0 +1,124 @@
+import axios from "axios";
+import React, { useCallback, useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { IoMdArrowDropright } from "react-icons/io";
+import { FaHeart } from "react-icons/fa6";
+import { CiHeart } from "react-icons/ci";
+import { toast } from "react-toastify";
+import { useDispatch, useSelector } from "react-redux";
+import Card from "../components/Card.jsx";
+import { fetchBooksStart } from "../store/bookSlice/index.js";
+import { addToCart } from "../store/cartSlice/index.js";
+
+const BookDetails = () => {
+  const [book, setBook] = useState(null);
+  const { state } = useLocation();
+  const { category, title } = useParams();
+    const {items} = useSelector((state)=> state.cart)
+  const dispatch = useDispatch();
+  const fetchSingleBook = useCallback(async () => {
+    try {
+      const { data } = await axios.get(
+        `http://localhost:3000/api/v1/books/get-single-book/${state.id}`,
+        { withCredentials: true }
+      );
+      setBook(data);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [state?.id]);
+
+  useEffect(() => {
+    fetchSingleBook();
+  }, [fetchSingleBook]);
+
+  const handleFavourite = async (id) => {
+    try {
+      const { data } = await axios.get(
+        `http://localhost:3000/api/v1/books/make-favourite/${id}`,
+        { withCredentials: true }
+      );
+      toast.success(data.message, { autoClose: 2000 });
+
+      fetchBooksStart();
+      await fetchSingleBook();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+   const handleCart =(e,book)=>{
+      e.preventDefault()
+      const existing = items.find((item)=> item._id === book._id)
+      if(existing){
+        toast.error("Book already added to cart.",{autoClose: 2000})
+      }else{
+      dispatch(addToCart(book))
+      toast.success("Book added to cart.",{autoClose:2000})
+      }
+    }
+
+  if (!book) return null;
+
+  return (
+    <>
+      <div className="px-6 md:px-8 xl:px-26 pt-24 pb-4 md:pt-58 xl:pt-34 z-10 bg-gray-100">
+        <div className="flex items-center mb-4 text-[14px] text-gray-500">
+          <p>Category</p>
+          <IoMdArrowDropright size="20px" />
+          <p>{category}</p>
+          <IoMdArrowDropright size="20px" />
+          <p>{title}</p>
+        </div>
+        <div className="flex flex-col xl:flex-row gap-12 justify-between">
+          <div className="xl:w-[55%]">
+            <div className="relative w-full">
+              <img className="rounded-xl w-full" src={book.book.coverImage} alt="" />
+
+              <button
+                onClick={() => handleFavourite(book.book._id)}
+                className="absolute top-4 right-6 xl:right-12 p-1 rounded-full shadow hover:bg-red-100 transition"
+              >
+                {book.book.favourite ? (
+                  <FaHeart className="text-3xl text-red-500 cursor-pointer" />
+                ) : (
+                  <CiHeart className="text-white text-3xl hover:text-red-500 cursor-pointer" />
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="xl:w-[45%] bg-white rounded-xl px-8 py-4 flex flex-col gap-2">
+            <h1 className="text-3xl font-bold ">{book?.book.title}</h1>
+            <p className="text-gray-600 text-xl">By: <span className="text-black font-semibold">{book?.book?.author}</span></p>
+            <p className="text-2xl">Price: <span className="text-green-600 font-semibold">{book?.book?.newPrice}</span> <span className="text-[16px] text-red-600 ml-2 line-through">{book?.book?.oldPrice}</span></p>
+            <button 
+            onClick={(e)=> handleCart(e,book?.book)}
+            className="bg-blue-600 text-white py-2 rounded-xl cursor-pointer hover:bg-blue-700 my-2">
+                Add to cart
+              </button>
+            <p className="font-semibold text-xl">Condition</p>
+                <div className="flex gap-2">
+                   <p className="font-semibold rounded-full px-8 py-1 border inline"> New</p>
+                </div>
+            <p className="font-semibold text-xl">Format</p>
+                <div className="flex gap-2">
+                  <p className="font-semibold rounded-full px-8 py-1 border inline"> Paperback</p>
+                </div>
+            <div>
+              <h1 className="font-semibold text-xl">Description</h1>
+              <div>
+                {book?.book?.description}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold mt-6">Similar books</h1>
+          <Card />
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default BookDetails;
